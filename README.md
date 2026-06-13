@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.png" width="140" height="140" alt="Notchy logo" />
+<img src="assets/logo.png?v=2" width="140" height="140" alt="Notchy logo" />
 
 # Notchy
 
