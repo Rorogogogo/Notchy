@@ -4,3 +4,6 @@ build/
 .antigravitycli/
 website/node_modules/
 website/dist/
+website/*.tsbuildinfo
+website/vite.config.d.ts
+website/vite.config.js
