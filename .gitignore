@@ -2,6 +2,7 @@ build/
 .DS_Store
 *.dSYM/
 .antigravitycli/
+.nomoreide/
 website/node_modules/
 website/dist/
 website/*.tsbuildinfo
