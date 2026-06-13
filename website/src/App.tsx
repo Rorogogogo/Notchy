@@ -191,11 +191,11 @@ function NotchyDemo() {
             className="absolute left-1/2 top-0 h-[29px] w-[154px] -translate-x-1/2 rounded-b-[22px] bg-[#030303] shadow-[0_10px_24px_rgba(0,0,0,0.34),inset_0_0_0_1px_rgba(255,255,255,0.04)] sm:h-8 sm:w-44"
             aria-hidden="true"
           />
-          <div className="absolute left-1/2 top-2 z-10 flex h-7 w-[92px] -translate-x-1/2 animate-pill-open items-center justify-center gap-2.5 rounded-b-[17px] bg-[#050505] text-cream shadow-[0_10px_22px_rgba(0,0,0,0.38),inset_0_0_0_1px_rgba(255,255,255,0.06)] sm:top-2.5 sm:h-[30px]">
+          <div className="absolute left-1/2 top-2 z-10 flex h-7 w-[92px] -translate-x-1/2 animate-pill-open items-center justify-center gap-2.5 rounded-b-[17px] bg-[#050505] text-cream shadow-[0_10px_22px_rgba(0,0,0,0.38),inset_0_0_0_1px_rgba(255,255,255,0.06)] motion-reduce:w-[124px] motion-reduce:animate-none sm:top-2.5 sm:h-[30px]">
             <AgentGlyph agent="Claude" />
             <StatusDot status="working" pill />
           </div>
-          <div className="absolute top-[46px] w-[min(330px,100%)] origin-top animate-panel-reveal rounded-lg border border-white/12 bg-[#060707]/95 p-2.5 text-cream opacity-0 shadow-[0_26px_56px_rgba(0,0,0,0.46),inset_0_1px_0_rgba(255,255,255,0.08)] sm:top-[51px] sm:w-[min(386px,100%)] sm:p-[13px]">
+          <div className="absolute top-[46px] w-[min(330px,100%)] origin-top animate-panel-reveal rounded-lg border border-white/12 bg-[#060707]/95 p-2.5 text-cream opacity-0 shadow-[0_26px_56px_rgba(0,0,0,0.46),inset_0_1px_0_rgba(255,255,255,0.08)] motion-reduce:translate-y-0 motion-reduce:scale-100 motion-reduce:animate-none motion-reduce:opacity-100 sm:top-[51px] sm:w-[min(386px,100%)] sm:p-[13px]">
             <div className="mb-2 flex items-center justify-between gap-2.5 text-[13px] font-bold leading-tight text-cream/72">
               <span>Live agent monitor</span>
               <Code2 className="size-[15px]" />
