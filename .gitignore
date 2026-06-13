@@ -2,3 +2,5 @@ build/
 .DS_Store
 *.dSYM/
 .antigravitycli/
+website/node_modules/
+website/dist/
