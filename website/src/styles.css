@@ -19,37 +19,6 @@
   --color-codex: #63d2a1;
   --color-claude: #f3835e;
   --color-antigravity: #8aa8ff;
-
-  --animate-panel-reveal: panel-reveal 8s ease-in-out infinite;
-  --animate-pill-open: pill-open 8s ease-in-out infinite;
-
-  @keyframes panel-reveal {
-    0%,
-    12% {
-      opacity: 0;
-      transform: translateY(-10px) scale(0.96);
-    }
-    22%,
-    86% {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-    100% {
-      opacity: 0;
-      transform: translateY(-10px) scale(0.96);
-    }
-  }
-
-  @keyframes pill-open {
-    0%,
-    100% {
-      width: 92px;
-    }
-    22%,
-    86% {
-      width: 124px;
-    }
-  }
 }
 
 @layer base {

@@ -1,8 +1,9 @@
-// Renders the ClaudeStatus crab logo as a PNG at the requested size.
+// Renders the Notchy logo as a PNG at the requested size.
 // Usage: swift gen-icon.swift <size> <output.png>
 //
-// The crab uses the same viewBox (66x52) as the in-app icon so the
-// app icon and the README logo match.
+// The mark is the product itself: a flat charcoal squircle with the
+// signature notch hanging from the top edge and two status dots peeking
+// out like eyes — a little face you glance at to read your agent.
 
 import AppKit
 import CoreGraphics
@@ -14,24 +15,18 @@ guard args.count >= 3, let size = Int(args[1]) else {
     exit(1)
 }
 let outputPath = args[2]
+let S = CGFloat(size)
 
-let pixelSize = CGFloat(size)
-let viewBox = CGSize(width: 66, height: 52)
-let crabScale = min(pixelSize / viewBox.width, pixelSize / viewBox.height) * 0.78
-let crabW = viewBox.width * crabScale
-let crabH = viewBox.height * crabScale
-let originX = (pixelSize - crabW) / 2
-let originY = (pixelSize - crabH) / 2
-
-let coral = CGColor(red: 0.85, green: 0.47, blue: 0.34, alpha: 1.0)
-let black = CGColor(red: 0, green: 0, blue: 0, alpha: 1.0)
-let bg = CGColor(red: 0, green: 0, blue: 0, alpha: 1.0)
+// Palette (flat, no gradients).
+let bgColor    = CGColor(red: 0.106, green: 0.118, blue: 0.149, alpha: 1) // #1b1e26
+let notchColor = CGColor(red: 0,     green: 0,     blue: 0,     alpha: 1) // #000000
+let eyeColor   = CGColor(red: 0.957, green: 0.957, blue: 0.961, alpha: 1) // #f4f4f5
 
 let colorSpace = CGColorSpaceCreateDeviceRGB()
 guard let ctx = CGContext(
     data: nil,
-    width: Int(pixelSize),
-    height: Int(pixelSize),
+    width: Int(S),
+    height: Int(S),
     bitsPerComponent: 8,
     bytesPerRow: 0,
     space: colorSpace,
@@ -41,46 +36,49 @@ guard let ctx = CGContext(
     exit(1)
 }
 
-// Rounded-rect black background (macOS app-icon style)
-let radius = pixelSize * 0.22
-let bgRect = CGRect(x: 0, y: 0, width: pixelSize, height: pixelSize)
-let bgPath = CGPath(roundedRect: bgRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+// Flip to a top-left origin so all geometry reads top-down.
+ctx.translateBy(x: 0, y: S)
+ctx.scaleBy(x: 1, y: -1)
+ctx.interpolationQuality = .high
+
+// MARK: Background — flat charcoal squircle.
+let radius = S * 0.2237
+let bgPath = CGPath(roundedRect: CGRect(x: 0, y: 0, width: S, height: S),
+                    cornerWidth: radius, cornerHeight: radius, transform: nil)
 ctx.addPath(bgPath)
-ctx.setFillColor(bg)
+ctx.setFillColor(bgColor)
 ctx.fillPath()
 
-// Draw crab in viewBox coordinates with origin at top-left of crab area.
-// CGContext origin is bottom-left, so flip vertically.
+// MARK: The notch — flat top, rounded bottom corners, hanging from the top.
+// Drawn as a fully-rounded rect whose top edge sits above the canvas, so the
+// background clip shaves the top corners and leaves a flat top.
+let nW = S * 0.58
+let nX = (S - nW) / 2
+let nBottom = S * 0.50
+let nR = S * 0.13
+let notchPath = CGPath(roundedRect: CGRect(x: nX, y: -nR, width: nW, height: nBottom + nR),
+                       cornerWidth: nR, cornerHeight: nR, transform: nil)
 ctx.saveGState()
-ctx.translateBy(x: originX, y: pixelSize - originY)
-ctx.scaleBy(x: crabScale, y: -crabScale)
-
-func fill(_ color: CGColor, _ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) {
-    ctx.setFillColor(color)
-    ctx.fill(CGRect(x: x, y: y, width: w, height: h))
-}
-
-// Antennae
-fill(coral, 0,  13, 6, 13)
-fill(coral, 60, 13, 6, 13)
-
-// Legs
-for x in [CGFloat(6), 18, 42, 54] { fill(coral, x, 39, 6, 13) }
-
-// Body
-fill(coral, 6, 0, 54, 39)
-
-// Eyes (slightly inset)
-fill(black, 12, 13, 6, 6.5)
-fill(black, 48, 13, 6, 6.5)
-
+ctx.addPath(bgPath)
+ctx.clip()
+ctx.addPath(notchPath)
+ctx.setFillColor(notchColor)
+ctx.fillPath()
 ctx.restoreGState()
 
+// MARK: Eyes — two flat status dots inside the notch.
+let eyeR = S * 0.066
+let eyeY = S * 0.255
+for eyeX in [S * 0.5 - S * 0.125, S * 0.5 + S * 0.125] {
+    ctx.setFillColor(eyeColor)
+    ctx.fillEllipse(in: CGRect(x: eyeX - eyeR, y: eyeY - eyeR, width: eyeR * 2, height: eyeR * 2))
+}
+
+// MARK: Write PNG.
 guard let image = ctx.makeImage() else {
     FileHandle.standardError.write("failed to create image\n".data(using: .utf8)!)
     exit(1)
 }
-
 let url = URL(fileURLWithPath: outputPath)
 guard let dest = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil) else {
     FileHandle.standardError.write("failed to open destination\n".data(using: .utf8)!)
