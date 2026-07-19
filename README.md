@@ -31,7 +31,7 @@ Hover for live quota usage — the exact windows the agents report, plus Codex m
 - 🤝 **Multi-agent support** — Claude Code, Codex, **and** Antigravity (Gemini CLI) in the same pill
 - 🪶 **Featherweight** — ~0.1 % idle CPU, ~32 MB RSS, ~220 KB binary
 - 🛜 **No vendor API keys** — Claude is file-fed; Codex is queried through its authenticated local app-server
-- 🌗 **Native macOS** — single Swift binary, no Electron, no Python, no 60 Hz redraw loops
+- 🌗 **Native macOS UI** — single Swift app binary, no Electron and no 60 Hz redraw loops
 - 👻 **Stays out of the way** — auto-hides after 10 min, reappears the instant a hook fires
 
 <br />
