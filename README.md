@@ -7,7 +7,7 @@
 **A tiny, native macOS notch indicator for [Claude Code](https://docs.claude.com/en/docs/claude-code), Codex, and Antigravity.**
 
 Glance at your notch. Know if your agent is working, waiting on you, or idle.
-Hover for live 5h / weekly usage — the exact numbers `/usage` would show.
+Hover for live quota usage — the exact windows the agents report, plus Codex manual reset credits.
 
 <p>
   <a href="https://github.com/Rorogogogo/Notchy/stargazers"><img src="https://img.shields.io/github/stars/Rorogogogo/Notchy?style=for-the-badge&logo=github&color=FFD166&labelColor=1a1a1a" alt="GitHub stars" /></a>
@@ -27,10 +27,10 @@ Hover for live 5h / weekly usage — the exact numbers `/usage` would show.
 ## ✨ Highlights
 
 - 🟢 **Live agent status** — green = working · yellow = waiting on you · gray = idle
-- 📊 **Real usage, not estimates** — same numbers Claude Code's `/usage` shows, with reset countdowns
+- 📊 **Real usage, not estimates** — reported quota windows, remaining allowance, and exact reset times
 - 🤝 **Multi-agent support** — Claude Code, Codex, **and** Antigravity (Gemini CLI) in the same pill
 - 🪶 **Featherweight** — ~0.1 % idle CPU, ~32 MB RSS, ~220 KB binary
-- 🛜 **Zero network calls** — everything is file-watched locally via `kqueue`
+- 🛜 **No vendor API keys** — Claude is file-fed; Codex is queried through its authenticated local app-server
 - 🌗 **Native macOS** — single Swift binary, no Electron, no Python, no 60 Hz redraw loops
 - 👻 **Stays out of the way** — auto-hides after 10 min, reappears the instant a hook fires
 
@@ -48,8 +48,8 @@ A small black notch-shaped pill, slightly wider than the physical notch:
 
 Hover the pill to expand Dynamic-Island-style and reveal:
 
-- **5h block** usage with a 16-segment bar and reset countdown (Claude & Codex)
-- **This week** usage with a 16-segment bar and reset countdown (Claude & Codex)
+- Each usage window the agent currently reports, with a 16-segment bar, remaining allowance, and exact local reset time
+- Available Codex manual reset credits and the nearest credit expiry (consumption stays safely inside Codex `/usage`)
 - A status-only row for Antigravity (agent · project · status — Antigravity exposes no quota to chart)
 - Current project + status, with a one-click quit button
 
@@ -67,8 +67,8 @@ There are a few notch-style "vibe coding" indicators out there. Here's how Notch
 | Binary size | ~220 KB | 80 – 250 MB |
 | Update mechanism | `kqueue` file watch, event-driven | Timer polling, often 1 – 60 Hz |
 | Usage numbers | Real `/usage` values via statusline JSON | Estimated, scraped, or absent |
-| Network calls | None | Often polls a vendor API |
-| Reset countdowns | ✅ Exact (from server) | ❌ or approximate |
+| Usage access | Local status data + authenticated Codex app-server | Often scrapes or needs a separate API key |
+| Reset times | ✅ Exact (from server) | ❌ or approximate |
 | Multi-agent (Claude Code + Codex + Antigravity) | ✅ All three, side by side | Usually one only |
 | Notch-shape geometry | Matches Dynamic Island curves | Often a flat rectangle floating below |
 | Auto-hide when idle | ✅ After 10 min, instant wake on hook | Often always-on |
@@ -96,7 +96,7 @@ Notchy's installer adds a 10-line writer block to your `~/.claude/statusline-com
 
 Numbers refresh on every statusline render (i.e. while a TUI is active). When no TUI is open, the last known numbers stay on screen until the next render.
 
-For Codex, Notchy reads the latest local session `token_count` event that includes `rate_limits`, then writes the same usage format to `~/.codex/notchy/usage`. This gives the Codex row its own 5h and weekly usage bars without network calls.
+For Codex, Notchy asks the authenticated local Codex app-server for `account/rateLimits/read`. It renders whichever windows Codex currently returns—today that may be a weekly-only quota instead of the older 5h + weekly pair—and shows available manual reset credits plus their nearest expiry. The helper caches fresh results for 30 seconds and falls back to the latest local session `token_count.rate_limits` event if app-server is unavailable. Reset credits are read-only in Notchy; use Codex `/usage` to consume one.
 
 Antigravity (Gemini CLI / `agy`) is **status-only**: it doesn't expose a 5h/weekly quota anywhere we can read, so its row shows agent · project · status with no usage bars rather than fabricating numbers. If a future Antigravity release surfaces real quota, the same writer pattern slots straight in.
 
@@ -107,8 +107,8 @@ Antigravity (Gemini CLI / `agy`) is **status-only**: it doesn't expose a 5h/week
 - macOS 14 (Sonoma) or later
 - A MacBook with a notch (M-series 14"/16" Pro, M3 Air, etc.)
 - Any of Claude Code, Codex, and/or Antigravity (Gemini CLI) installed
-- `jq` on `PATH` (preinstalled on most dev machines; `brew install jq` if missing) — needed for Claude/Codex live usage
-- `python3` on `PATH` for Codex/Antigravity project-name parsing (optional — status still works without it, just with a blank project)
+- `jq` on `PATH` (preinstalled on most dev machines; `brew install jq` if missing) — needed for Claude live usage
+- `python3` on `PATH` for Codex usage and Codex/Antigravity project-name parsing
 - For building from source: Xcode Command Line Tools (`xcode-select --install`)
 
 <br />
@@ -168,7 +168,7 @@ Seven pieces:
 
 4. **`~/.codex/notchy/play.sh`** — invoked by Codex lifecycle hooks. Reads the hook payload from stdin and writes Codex status updates to `~/.codex/notchy/status`.
 
-5. **`~/.codex/notchy/usage.sh`** — scans recent Codex session JSONL files for the latest `token_count.rate_limits` event and writes `<block_pct>\t<block_reset>\t<weekly_pct>\t<weekly_reset>\n` to `~/.codex/notchy/usage`.
+5. **`~/.codex/notchy/usage.sh`** — reads dynamic rate-limit windows and reset-credit metadata from Codex's local app-server, caches them briefly, and writes a versioned record to `~/.codex/notchy/usage`. Recent session JSONL remains the offline usage fallback.
 
 6. **`~/.gemini/notchy/play.sh`** — invoked by Antigravity (Gemini CLI) hook events. Reads the hook payload from stdin and writes `<status>\t<unix_ts>\t<project_name>\n` to `~/.gemini/notchy/status`. Status-only; no usage file.
 
@@ -206,7 +206,7 @@ Codex registers the same set of events in `~/.codex/hooks.json`.
 
 - **No hook fires when the user denies a permission prompt** ([per the docs](https://docs.claude.com/en/docs/claude-code/hooks)). Notchy handles this by auto-expiring `waiting` → `idle` after 3 seconds with no further events.
 - **Live usage only refreshes while a TUI is active.** Anthropic only sends `rate_limits` in the statusline JSON during an interactive session. When no `claude` TUI is open, the bars freeze at the last known values until the next render.
-- **Codex usage refreshes from local session logs.** The Codex bars update after Codex emits a `token_count` event with `rate_limits`; before that, the row shows the last known values.
+- **Codex usage depends on Codex authentication.** The local app-server supplies current windows and manual reset credits. If it is temporarily unavailable, Notchy falls back to session logs for usage windows and hides reset-credit metadata until the next successful refresh.
 - **`rate_limits` only appears after the first API response** in a session. Open a fresh TUI without sending anything, and the bars stay on whatever the previous render left.
 - **Hooks load at session start.** After installing (or reconfiguring), restart any running Claude Code session.
 - **Codex hooks require a restart.** Restart any running Codex CLI session after installing or reconfiguring Notchy.

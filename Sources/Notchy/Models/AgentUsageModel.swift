@@ -1,14 +1,19 @@
 import AppKit
 import Combine
 
-// MARK: - Usage model (5h block + weekly token quota, written by usage-tick.sh)
+struct AgentUsageWindow: Equatable {
+    let label: String
+    let pct: Double
+    let resetUnix: Int
+}
+
+// MARK: - Usage model (dynamic windows with legacy 5h + weekly compatibility)
 
 @MainActor
 final class AgentUsageModel: ObservableObject {
-    @Published var blockPct: Double = 0
-    @Published var weeklyPct: Double = 0
-    @Published var blockResetUnix: Int = 0
-    @Published var weeklyResetUnix: Int = 0
+    @Published private(set) var windows: [AgentUsageWindow] = []
+    @Published private(set) var resetCreditCount: Int?
+    @Published private(set) var resetCreditExpiryUnix: Int = 0
 
     private var fileSource: DispatchSourceFileSystemObject?
     private var pollTimer: Timer?
@@ -21,7 +26,9 @@ final class AgentUsageModel: ObservableObject {
         reload()
         watchFile()
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.pollIfChanged()
+            Task { @MainActor [weak self] in
+                self?.pollIfChanged()
+            }
         }
     }
 
@@ -52,12 +59,109 @@ final class AgentUsageModel: ObservableObject {
 
     func reload() {
         guard let raw = try? String(contentsOfFile: path, encoding: .utf8) else { return }
-        let parts = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = raw.trimmingCharacters(in: .newlines)
             .split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-        if parts.indices.contains(0) { blockPct        = Double(parts[0]) ?? 0 }
-        if parts.indices.contains(1) { blockResetUnix  = Int(parts[1]) ?? 0 }
-        if parts.indices.contains(2) { weeklyPct       = Double(parts[2]) ?? 0 }
-        if parts.indices.contains(3) { weeklyResetUnix = Int(parts[3]) ?? 0 }
+        if parts.first == "v2" {
+            reloadVersionTwo(parts)
+        } else {
+            reloadLegacy(parts)
+        }
+    }
+
+    private func reloadVersionTwo(_ parts: [String]) {
+        guard parts.indices.contains(1),
+              let windowCount = Int(parts[1]),
+              windowCount > 0 else { return }
+
+        var parsedWindows: [AgentUsageWindow] = []
+        var index = 2
+        for _ in 0..<windowCount {
+            guard parts.indices.contains(index + 2),
+                  let pct = Double(parts[index]),
+                  let reset = Int(parts[index + 1]),
+                  let minutes = Int(parts[index + 2]),
+                  pct.isFinite,
+                  (0...100).contains(pct),
+                  reset > 0,
+                  minutes > 0 else { return }
+            parsedWindows.append(AgentUsageWindow(
+                label: Self.label(forWindowMinutes: minutes),
+                pct: pct,
+                resetUnix: reset
+            ))
+            index += 3
+        }
+
+        var parsedCreditCount: Int?
+        var parsedCreditExpiry = 0
+        if parts.indices.contains(index), let count = Int(parts[index]), count >= 0 {
+            parsedCreditCount = count
+        }
+        if parts.indices.contains(index + 1) {
+            parsedCreditExpiry = Int(parts[index + 1]) ?? 0
+        }
+
+        windows = parsedWindows
+        resetCreditCount = parsedCreditCount
+        resetCreditExpiryUnix = parsedCreditExpiry
+    }
+
+    private func reloadLegacy(_ parts: [String]) {
+        guard parts.count >= 4,
+              let blockPct = Double(parts[0]),
+              let blockReset = Int(parts[1]),
+              let weeklyPct = Double(parts[2]),
+              let weeklyReset = Int(parts[3]),
+              blockPct.isFinite,
+              weeklyPct.isFinite,
+              (0...100).contains(blockPct),
+              (0...100).contains(weeklyPct),
+              blockReset > 0,
+              weeklyReset > 0 else { return }
+        windows = [
+            AgentUsageWindow(
+                label: "5h block",
+                pct: blockPct,
+                resetUnix: blockReset
+            ),
+            AgentUsageWindow(
+                label: "This week",
+                pct: weeklyPct,
+                resetUnix: weeklyReset
+            ),
+        ]
+        resetCreditCount = nil
+        resetCreditExpiryUnix = 0
+    }
+
+    private static func label(forWindowMinutes minutes: Int) -> String {
+        switch minutes {
+        case 300: return "5h block"
+        case 1_440: return "Today"
+        case 10_080: return "This week"
+        default:
+            if minutes.isMultiple(of: 1_440) {
+                return "\(minutes / 1_440)d window"
+            }
+            if minutes.isMultiple(of: 60) {
+                return "\(minutes / 60)h window"
+            }
+            return "\(minutes)m window"
+        }
+    }
+
+    static func resetDateLabel(
+        for unix: Int,
+        timeZone: TimeZone = .current,
+        locale: Locale = .current
+    ) -> String {
+        guard unix > 0 else { return "—" }
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: Date(timeIntervalSince1970: TimeInterval(unix)))
     }
 
     private func watchFile() {

@@ -118,10 +118,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             width: physical.width + widthExtension,
             height: physical.height
         )
-        // Expanded pill: wider for the weekly bar + labels, taller for the detail block.
+        // Expanded pill: wide enough for usage details and tall enough for reset credits.
         let expandedSize = CGSize(
             width:  max(390, collapsedSize.width + 90),
-            height: collapsedSize.height + 296
+            height: collapsedSize.height + 312
         )
 
         let frame = NSRect(

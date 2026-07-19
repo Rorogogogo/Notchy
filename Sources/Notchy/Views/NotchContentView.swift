@@ -80,17 +80,13 @@ struct NotchContentView: View {
     }
 
     private var currentSize: CGSize {
-        hovering ? expandedSize : collapsedSize
-    }
-
-    private func resetLabel(_ unix: Int) -> String {
-        guard unix > 0 else { return "—" }
-        let remaining = max(0, unix - Int(Date().timeIntervalSince1970))
-        let hours = remaining / 3600
-        let mins  = (remaining % 3600) / 60
-        if hours >= 24 { return "\(hours / 24)d \(hours % 24)h" }
-        if hours > 0   { return "\(hours)h \(mins)m" }
-        return "\(mins)m"
+        guard hovering else { return collapsedSize }
+        let missingCodexRows = max(0, 2 - codexUsage.windows.count)
+        let unusedCreditSpace = codexUsage.resetCreditCount == nil ? 16 : 0
+        return CGSize(
+            width: expandedSize.width,
+            height: expandedSize.height - CGFloat(missingCodexRows * 30 + unusedCreditSpace)
+        )
     }
 
     var body: some View {
@@ -288,8 +284,12 @@ struct NotchContentView: View {
             }
 
             if showUsage, let usage = snapshot.usage {
-                usageRow(label: "5h block", pct: usage.blockPct, reset: usage.blockResetUnix)
-                usageRow(label: "This week", pct: usage.weeklyPct, reset: usage.weeklyResetUnix)
+                ForEach(Array(usage.windows.enumerated()), id: \.offset) { _, window in
+                    usageRow(label: window.label, pct: window.pct, reset: window.resetUnix)
+                }
+                if let resetCount = usage.resetCreditCount {
+                    resetCreditRow(count: resetCount, expiry: usage.resetCreditExpiryUnix)
+                }
             }
         }
     }
@@ -302,11 +302,25 @@ struct NotchContentView: View {
             HStack {
                 UsageBar(pct: pct, segmentCount: 16, showPercent: false)
                 Spacer()
-                Text("\(Int(pct.rounded()))% · resets in \(resetLabel(reset))")
+                Text("\(Int(max(0, 100 - pct).rounded()))% left · resets \(AgentUsageModel.resetDateLabel(for: reset))")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.55))
                     .monospacedDigit()
             }
         }
+    }
+
+    private func resetCreditRow(count: Int, expiry: Int) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: "arrow.counterclockwise.circle")
+                .font(.system(size: 9, weight: .semibold))
+            Text(count == 1 ? "1 manual reset" : "\(count) manual resets")
+            if expiry > 0 {
+                Text("· next expires \(AgentUsageModel.resetDateLabel(for: expiry))")
+            }
+        }
+        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+        .foregroundColor(.white.opacity(0.5))
+        .monospacedDigit()
     }
 }
