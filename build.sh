@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-VERSION="1.4.0"
+VERSION="1.5.0"
 IDENTIFIER="com.notchy.app"
 APP_NAME="Notchy"
 ROOT="$(cd "$(dirname "$0")" && pwd)"
