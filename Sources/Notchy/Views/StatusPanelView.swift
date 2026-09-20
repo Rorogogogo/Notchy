@@ -79,17 +79,20 @@ struct StatusPanelView: View {
 
     private func usageRow(label: String, pct: Double, reset: Int) -> some View {
         VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
+            // The reading sits beside the bar it describes: the segments are a
+            // fixed 126pt, so on their own line they left a wide gap while the
+            // numbers crowded the label above.
             HStack {
-                Text(label)
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.secondary)
+                UsageBar(pct: pct, segmentCount: 16, showPercent: false)
                 Spacer()
                 Text("\(Int(max(0, 100 - pct).rounded()))% left · resets in \(AgentUsageModel.resetCountdownLabel(for: reset, now: now))")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
-            UsageBar(pct: pct, segmentCount: 16, showPercent: false)
         }
     }
 
