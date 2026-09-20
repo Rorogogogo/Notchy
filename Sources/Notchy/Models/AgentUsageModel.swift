@@ -25,11 +25,11 @@ final class AgentUsageModel: ObservableObject {
         if createIfMissing { ensureFileExists() }
         reload()
         watchFile()
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.pollIfChanged()
-            }
+        let timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.pollIfChanged() }
         }
+        timer.tolerance = 1.0
+        pollTimer = timer
     }
 
     private func ensureFileExists() {

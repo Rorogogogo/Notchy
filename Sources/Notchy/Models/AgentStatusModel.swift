@@ -9,6 +9,16 @@ final class AgentStatusModel: ObservableObject {
     @Published var project: String = ""
     @Published var lastEventTs: Int = 0
 
+    // "waiting" is a transient hook signal; treat a stale one as idle.
+    private static let waitingGrace: TimeInterval = 3
+
+    var effectiveStatus: String {
+        if status == "waiting", waitingAge > Self.waitingGrace { return "idle" }
+        return status
+    }
+
+    private var waitingAge: TimeInterval { Date().timeIntervalSince1970 - TimeInterval(lastEventTs) }
+
     private var fileSource: DispatchSourceFileSystemObject?
     private var pollTimer: Timer?
     private var tickTimer: Timer?
@@ -20,9 +30,11 @@ final class AgentStatusModel: ObservableObject {
         ensureFileExists()
         reload()
         watchFile()
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-            self?.pollIfChanged()
+        let timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.pollIfChanged() }
         }
+        timer.tolerance = 0.25
+        pollTimer = timer
     }
 
     private func pollIfChanged() {
@@ -58,20 +70,16 @@ final class AgentStatusModel: ObservableObject {
         if parts.indices.contains(1) { lastEventTs = Int(parts[1]) ?? 0 }
         if parts.indices.contains(2) { project = parts[2] }
         
-        // Dynamic wait-state expiration setup
+        // Republish once the grace period lapses so observers can retire the
+        // waiting colour without another file write. Fire just past it, or the
+        // age check still reads as inside the window.
+        tickTimer?.invalidate()
+        tickTimer = nil
         if status == "waiting" {
-            let age = Int(Date().timeIntervalSince1970) - lastEventTs
-            let remaining = max(0.1, 3.1 - Double(age))
-            tickTimer?.invalidate()
+            let remaining = max(0.1, Self.waitingGrace + 0.1 - waitingAge)
             tickTimer = Timer.scheduledTimer(withTimeInterval: remaining, repeats: false) { [weak self] _ in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    self.objectWillChange.send()
-                }
+                MainActor.assumeIsolated { self?.objectWillChange.send() }
             }
-        } else {
-            tickTimer?.invalidate()
-            tickTimer = nil
         }
     }
 

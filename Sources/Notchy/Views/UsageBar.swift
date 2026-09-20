@@ -14,9 +14,9 @@ struct UsageBar: View {
 
     private var color: Color {
         switch pct {
-        case ..<70:  return Color(red: 0.30, green: 0.85, blue: 0.45)
-        case ..<90:  return Color(red: 0.98, green: 0.78, blue: 0.20)
-        default:     return Color(red: 0.95, green: 0.35, blue: 0.30)
+        case ..<70:  return Color(red: 0.24, green: 0.72, blue: 0.38)
+        case ..<90:  return Color(red: 0.95, green: 0.68, blue: 0.11)
+        default:     return Color(red: 0.90, green: 0.29, blue: 0.24)
         }
     }
 
@@ -25,14 +25,14 @@ struct UsageBar: View {
             HStack(spacing: 2) {
                 ForEach(0..<segmentCount, id: \.self) { i in
                     RoundedRectangle(cornerRadius: 1.5)
-                        .fill(i < filledSegments ? color : Color.white.opacity(0.18))
+                        .fill(i < filledSegments ? color : Color.primary.opacity(0.12))
                         .frame(width: 6, height: 8)
                 }
             }
             if showPercent {
                 Text("\(Int(pct.rounded()))%")
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
         }
