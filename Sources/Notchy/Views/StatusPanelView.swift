@@ -34,6 +34,9 @@ struct StatusPanelView: View {
         }
         .padding(14)
         .frame(width: 300)
+        // Opaque black, like the old notch pill — not the translucent system
+        // popover material, which lets the desktop bleed through the readings.
+        .background(Color.black)
     }
 
     private func agentRow(_ snapshot: AgentSnapshot) -> some View {

@@ -19,14 +19,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var iconKey: String?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.imagePosition = .imageOnly
-        item.button?.target = self
-        item.button?.action = #selector(togglePanel)
-        statusItem = item
+        installStatusItem()
 
         popover.behavior = .transient
         popover.animates = false
+        // The panel reads as the old black notch pill rather than a system
+        // popover: force dark so the semantic colours below invert with it.
+        popover.appearance = NSAppearance(named: .darkAqua)
         let host = NSHostingController(rootView: StatusPanelView(
             claudeStatus: claudeStatus,
             claudeUsage: claudeUsage,
@@ -48,6 +47,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         refreshStatusItem()
+
+        // The item has no window frame until AppKit has laid the menu bar out,
+        // so the placement check has to wait a beat rather than run inline.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.verifyPlacement(attempt: 0)
+        }
+    }
+
+    private func installStatusItem() {
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        item.button?.imagePosition = .imageOnly
+        item.button?.target = self
+        item.button?.action = #selector(togglePanel)
+        statusItem = item
+    }
+
+    // macOS hides an overflowed status item silently, so a fresh install on a
+    // full menu bar looks like a dead app: the item exists and keeps updating,
+    // it is just never drawn. Book a real slot, stepping rightwards if the
+    // first ask still lands in the margin beside the notch.
+    private func verifyPlacement(attempt: Int) {
+        guard let item = statusItem else { return }
+        guard !MenuBarPlacement.isPlaced(item) else { return }
+        guard attempt < MenuBarPlacement.attemptCount else {
+            MenuBarPlacement.warnMenuBarFullOnce()
+            return
+        }
+        // A slot the user positioned by hand is theirs; do not fight it.
+        guard attempt > 0 || !MenuBarPlacement.hasClaimedSlot else {
+            MenuBarPlacement.warnMenuBarFullOnce()
+            return
+        }
+
+        // Order matters: AppKit clears a status item's saved slot when the item
+        // is removed, so book the slot only once the old one is gone.
+        NSStatusBar.system.removeStatusItem(item)
+        statusItem = nil
+        MenuBarPlacement.claimSlot(attempt: attempt)
+        installStatusItem()
+        // A new button starts with no image; the cache key would suppress it.
+        iconKey = nil
+        refreshStatusItem()
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.verifyPlacement(attempt: attempt + 1)
+        }
     }
 
     @objc private func togglePanel() {
@@ -58,6 +103,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        // The popover's own frame view draws the translucent material and the
+        // arrow, so it has to be painted too or the black content sits inside a
+        // grey surround.
+        if let frameView = popover.contentViewController?.view.superview {
+            frameView.wantsLayer = true
+            frameView.layer?.backgroundColor = NSColor.black.cgColor
+        }
     }
 
     private func refreshStatusItem() {
