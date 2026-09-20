@@ -16,7 +16,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 
 type AgentState = 'working' | 'waiting' | 'idle';
 type AgentKind = 'claude' | 'codex' | 'antigravity';
@@ -60,14 +60,14 @@ const agents: Agent[] = [
   },
 ];
 
-// Collapsed pill mirrors the active agent (most recent event). Claude is working.
+// The menu bar icon mirrors the active agent (most recent event). Claude is working.
 const activeAgent = agents[0];
 
 const proofPoints = [
   { icon: Gauge, value: '~0.1%', label: 'idle CPU' },
   { icon: Activity, value: '~32 MB', label: 'memory' },
   { icon: Network, value: 'zero', label: 'network calls' },
-  { icon: MonitorDot, value: '3 agents', label: 'one notch' },
+  { icon: MonitorDot, value: '3 agents', label: 'one icon' },
 ];
 
 const statusHex: Record<AgentState, string> = {
@@ -84,8 +84,8 @@ const glassPanel =
 
 const REPO = 'Rorogogogo/Notchy';
 
-// Readable text tints for the three states (the glowing dots use the brighter
-// statusHex values so they match the notch lights exactly).
+// Readable text tints for the three states (the menu bar icon uses the
+// brighter statusHex values, so the two read as the same status).
 const stateInk: Record<AgentState, string> = {
   working: '#1aa54e',
   waiting: '#b8810a',
@@ -218,7 +218,7 @@ function App() {
             Notchy
           </h1>
           <p className="mt-3.5 max-w-[640px] text-balance text-[20px] font-medium leading-[1.2] tracking-normal text-ink/78 sm:text-[23px] md:text-[26px] xl:text-[28px]">
-            Glance at your notch. Know if your agent is{' '}
+            Glance at your menu bar. Know if your agent is{' '}
             <StateWord state="working">working</StateWord>,{' '}
             <StateWord state="waiting">waiting on you</StateWord>, or{' '}
             <StateWord state="idle">idle</StateWord>.
@@ -297,7 +297,7 @@ function App() {
       </section>
 
       <footer className="mt-8 border-t border-ink/10 pt-5 text-center text-[13px] leading-[1.6] text-ink/55">
-        Notch geometry and the crab-icon concept inspired by{' '}
+        The crab-icon concept is inspired by{' '}
         <a
           className="font-semibold text-ink/75 underline-offset-2 hover:underline"
           href="https://github.com/farouqaldori/vibe-notch"
@@ -311,7 +311,7 @@ function App() {
 }
 
 function NotchyDemo() {
-  // The active agent's live status — the single notch light reflects this, and
+  // The active agent's live status — the menu bar icon is tinted by this, and
   // the switcher below lets visitors flip it to learn what each color means.
   const [status, setStatus] = useState<AgentState>('working');
   const liveAgents = agents.map((agent, i) =>
@@ -324,8 +324,8 @@ function NotchyDemo() {
       <div className="relative min-h-[460px] w-full overflow-hidden rounded-[20px] shadow-[0_30px_80px_rgba(32,33,36,0.3),inset_0_0_0_1px_rgba(255,255,255,0.1)] sm:min-h-[560px] sm:rounded-[24px] lg:min-h-[640px]">
         <MacWallpaper />
 
-        {/* Menu bar */}
-        <div className="absolute inset-x-0 top-0 z-20 flex h-7 items-center justify-between px-4 text-[12px] font-medium leading-none text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] sm:h-[30px] sm:px-5">
+        {/* Menu bar — above the window layer, the way the real one is */}
+        <div className="absolute inset-x-0 top-0 z-40 flex h-7 items-center justify-between px-4 text-[12px] font-medium leading-none text-white/90 [text-shadow:0_1px_2px_rgba(0,0,0,0.35)] sm:h-[30px] sm:px-5">
           <div className="flex items-center gap-3.5 sm:gap-4">
             <Apple className="size-[15px] fill-white text-white" />
             <span className="font-semibold">Finder</span>
@@ -337,6 +337,7 @@ function NotchyDemo() {
             <span className="hidden text-white/90 md:inline">Help</span>
           </div>
           <div className="flex items-center gap-3.5 sm:gap-[18px]">
+            <MenuBarStatusItem agents={liveAgents} activeStatus={status} />
             <BatteryFull className="size-[18px] text-white" />
             <Wifi className="size-[15px] text-white" />
             <Search className="size-[15px] text-white" />
@@ -345,11 +346,8 @@ function NotchyDemo() {
           </div>
         </div>
 
-        {/* The notch */}
-        <Notch agents={liveAgents} activeStatus={status} />
-
         {/* In-scene terminal — the agent's session. Flipping its state here
-            drives the notch light directly above, all within one frame. */}
+            tints the menu bar icon above, all within one frame. */}
         <AgentTerminal status={status} onChange={setStatus} />
 
         {/* Dock */}
@@ -357,7 +355,7 @@ function NotchyDemo() {
       </div>
 
       <p className="mt-5 text-center text-[13px] font-semibold text-ink/55">
-        Flip the agent’s state in the terminal — watch the notch light change ↑
+        Flip the agent’s state in the terminal — watch the menu bar icon change ↑
       </p>
     </div>
   );
@@ -379,7 +377,7 @@ function useSpinner(active: boolean) {
 
 // A faux Claude Code session. The body below the conversation reflects the live
 // state — a spinner while working, a permission prompt while waiting, a done
-// line while idle — mirroring the notch light directly above.
+// line while idle — mirroring the menu bar icon above.
 function AgentTerminal({
   status,
   onChange,
@@ -564,7 +562,7 @@ function DockIcon({ app }: { app: DockApp }) {
   );
 }
 
-function Notch({
+function MenuBarStatusItem({
   agents: rows,
   activeStatus,
 }: {
@@ -572,92 +570,65 @@ function Notch({
   activeStatus: AgentState;
 }) {
   const [open, setOpen] = useState(false);
-  // Once the visitor has opened the notch even once, drop the hover hint —
-  // it has done its job and shouldn't keep nagging.
+  // Once the visitor has opened the panel even once, drop the hint — it has
+  // done its job and shouldn't keep nagging.
   const [discovered, setDiscovered] = useState(false);
 
-  const reveal = () => {
-    setOpen(true);
-    setDiscovered(true);
-  };
-
   return (
-    <div className="absolute left-1/2 top-0 z-40 -translate-x-1/2">
+    <div className="relative">
       <button
         type="button"
-        className="block cursor-default text-left"
+        className={`-mx-0.5 flex items-center rounded-[5px] px-1.5 py-1 transition-colors ${
+          open ? 'bg-white/25' : 'hover:bg-white/15'
+        }`}
         aria-expanded={open}
         aria-label="Notchy agent monitor"
-        onMouseEnter={reveal}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={reveal}
-        onBlur={() => setOpen(false)}
         onClick={() => {
           setDiscovered(true);
           setOpen((v) => !v);
         }}
       >
-        <div
-          className="relative bg-black shadow-[0_18px_44px_rgba(0,0,0,0.55)] transition-[width,border-radius] duration-[340ms] ease-[cubic-bezier(0.32,1.36,0.6,1)] motion-reduce:transition-none"
-          style={{
-            width: open ? 348 : 210,
-            borderBottomLeftRadius: open ? 24 : 16,
-            borderBottomRightRadius: open ? 24 : 16,
-          }}
-        >
-          {/* Top inward flares — black silhouette of the island against the
-              translucent menu bar, matching NotchShape's 6pt top corners. */}
-          <span className="pointer-events-none absolute left-0 top-0 size-[9px] -translate-x-full bg-black [mask-image:radial-gradient(circle_at_bottom_left,transparent_9px,black_9px)]" />
-          <span className="pointer-events-none absolute right-0 top-0 size-[9px] translate-x-full bg-black [mask-image:radial-gradient(circle_at_bottom_right,transparent_9px,black_9px)]" />
-
-          {/* Collapsed top row: active agent icon + its single status light,
-              colored by the live status (green / amber / gray). */}
-          <div
-            className="flex h-7 items-center transition-[padding] duration-[340ms] sm:h-[30px]"
-            style={{ paddingInline: open ? 20 : 18 }}
-          >
-            <AgentIcon kind={activeAgent.kind} size={18} />
-            <span className="flex-1" />
-            <span
-              className="size-2.5 rounded-full transition-colors duration-300"
-              style={{
-                background: statusHex[activeStatus],
-                boxShadow: `0 0 9px ${statusHex[activeStatus]}cc`,
-              }}
-            />
-          </div>
-
-          {/* Expanded detail */}
-          <div
-            className={`grid transition-[grid-template-rows,opacity] duration-[320ms] ease-out motion-reduce:transition-none ${
-              open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-            }`}
-          >
-            <div className="overflow-hidden">
-              <div className="flex flex-col gap-2.5 px-5 pb-4 pt-3">
-                {rows.map((agent, index) => (
-                  <div key={agent.name}>
-                    {index > 0 && <div className="mb-2.5 h-px bg-white/12" />}
-                    <AgentRow agent={agent} />
-                  </div>
-                ))}
-                <FooterControls />
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Idle has no tint in the app — it ships as a template image and the
+            menu bar paints it in its own label color, white over a wallpaper. */}
+        <AgentIcon
+          kind={activeAgent.kind}
+          size={17}
+          color={activeStatus === 'idle' ? '#ffffff' : statusHex[activeStatus]}
+        />
       </button>
 
-      {/* Hover hint — an arrow nudging visitors up toward the notch, since the
+      {/* Popover, anchored under the icon the way an NSPopover is */}
+      <div
+        className={`absolute right-0 top-[calc(100%+7px)] w-[min(78vw,320px)] origin-top-right transition duration-200 ease-out motion-reduce:transition-none ${
+          open
+            ? 'scale-100 opacity-100'
+            : 'pointer-events-none scale-95 opacity-0'
+        }`}
+      >
+        <span className="absolute -top-[5px] right-[10px] size-[10px] rotate-45 rounded-[2px] bg-[#1c1e21]/95 ring-1 ring-white/12" />
+        <div className="relative overflow-hidden rounded-[12px] bg-[#1c1e21]/95 text-left shadow-[0_24px_60px_rgba(0,0,0,0.5)] ring-1 ring-white/12 backdrop-blur-xl">
+          <div className="flex flex-col gap-2.5 px-4 py-3.5">
+            {rows.map((agent, index) => (
+              <div key={agent.name}>
+                {index > 0 && <div className="mb-2.5 h-px bg-white/12" />}
+                <AgentRow agent={agent} />
+              </div>
+            ))}
+            <FooterControls />
+          </div>
+        </div>
+      </div>
+
+      {/* Hint — an arrow nudging visitors up toward the icon, since the
           interaction isn't obvious. Fades out for good after the first open. */}
       <div
-        className={`pointer-events-none absolute left-1/2 top-[42px] flex -translate-x-1/2 flex-col items-center gap-1 transition-opacity duration-500 ${
+        className={`pointer-events-none absolute right-0 top-[34px] flex flex-col items-end gap-1 transition-opacity duration-500 ${
           discovered ? 'opacity-0' : 'opacity-100'
         }`}
       >
-        <ChevronUp className="size-4 text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] motion-safe:animate-bounce" />
+        <ChevronUp className="mr-[7px] size-4 text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] motion-safe:animate-bounce" />
         <span className="whitespace-nowrap rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white ring-1 ring-white/15 backdrop-blur-sm [text-shadow:0_1px_2px_rgba(0,0,0,0.4)]">
-          Hover the notch
+          Click the icon
         </span>
       </div>
     </div>
@@ -746,15 +717,37 @@ function FooterControls() {
   );
 }
 
-function AgentIcon({ kind, size }: { kind: AgentKind; size: number }) {
-  if (kind === 'claude') return <ClaudeCrab size={size} />;
-  if (kind === 'codex') return <CodexGlyph size={size} />;
-  return <AntigravitySpark size={size} />;
+// `color` tints a mark for the menu bar, where the status lives in the icon
+// itself; the panel rows leave it off and get each agent's own colors.
+function AgentIcon({
+  kind,
+  size,
+  color,
+}: {
+  kind: AgentKind;
+  size: number;
+  color?: string;
+}) {
+  if (kind === 'claude') return <ClaudeCrab size={size} color={color} />;
+  if (kind === 'codex') return <CodexGlyph size={size} color={color} />;
+  return <AntigravitySpark size={size} color={color} />;
 }
 
 // Pixel-art crab, ported from the app's ClaudeCrabIcon (viewBox 66x52).
-function ClaudeCrab({ size }: { size: number }) {
-  const c = '#d9785a';
+function ClaudeCrab({ size, color }: { size: number; color?: string }) {
+  const c = color ?? '#d9785a';
+  const maskId = useId();
+  const body = (
+    <>
+      <rect x="0" y="13" width="6" height="13" fill={c} />
+      <rect x="60" y="13" width="6" height="13" fill={c} />
+      <rect x="6" y="39" width="6" height="13" fill={c} />
+      <rect x="18" y="39" width="6" height="13" fill={c} />
+      <rect x="42" y="39" width="6" height="13" fill={c} />
+      <rect x="54" y="39" width="6" height="13" fill={c} />
+      <rect x="6" y="0" width="54" height="39" fill={c} />
+    </>
+  );
   return (
     <svg
       width={size}
@@ -764,21 +757,30 @@ function ClaudeCrab({ size }: { size: number }) {
       aria-hidden="true"
       style={{ display: 'block' }}
     >
-      <rect x="0" y="13" width="6" height="13" fill={c} />
-      <rect x="60" y="13" width="6" height="13" fill={c} />
-      <rect x="6" y="39" width="6" height="13" fill={c} />
-      <rect x="18" y="39" width="6" height="13" fill={c} />
-      <rect x="42" y="39" width="6" height="13" fill={c} />
-      <rect x="54" y="39" width="6" height="13" fill={c} />
-      <rect x="6" y="0" width="54" height="39" fill={c} />
-      <rect x="12" y="13" width="6" height="6.5" fill="#000" />
-      <rect x="48" y="13" width="6" height="6.5" fill="#000" />
+      {color ? (
+        <>
+          {/* A tinted crab punches its eyes through to whatever is behind,
+              the way the app's menu bar icon does. */}
+          <mask id={maskId}>
+            <rect x="0" y="0" width="66" height="52" fill="#fff" />
+            <rect x="12" y="13" width="6" height="6.5" fill="#000" />
+            <rect x="48" y="13" width="6" height="6.5" fill="#000" />
+          </mask>
+          <g mask={`url(#${maskId})`}>{body}</g>
+        </>
+      ) : (
+        <>
+          {body}
+          <rect x="12" y="13" width="6" height="6.5" fill="#000" />
+          <rect x="48" y="13" width="6" height="6.5" fill="#000" />
+        </>
+      )}
     </svg>
   );
 }
 
 // Codex mark, from the app's bundled codex.svg.
-function CodexGlyph({ size }: { size: number }) {
+function CodexGlyph({ size, color }: { size: number; color?: string }) {
   return (
     <svg
       width={size}
@@ -788,7 +790,7 @@ function CodexGlyph({ size }: { size: number }) {
       style={{ display: 'block' }}
     >
       <path
-        fill="#f4f4f4"
+        fill={color ?? '#f4f4f4'}
         d="M11.248 18.25q-.825 0-1.568-.314a4.3 4.3 0 0 1-1.32-.874 4 4 0 0 1-1.304.214 4 4 0 0 1-2.046-.544 4.27 4.27 0 0 1-1.518-1.485 4 4 0 0 1-.56-2.095q0-.48.131-1.04A4.4 4.4 0 0 1 2.04 10.71a4.07 4.07 0 0 1 .017-3.4 4.2 4.2 0 0 1 1.056-1.418 3.8 3.8 0 0 1 1.6-.842 3.9 3.9 0 0 1 .76-1.683q.593-.759 1.451-1.188a4.04 4.04 0 0 1 1.832-.429q.825 0 1.567.313.742.314 1.32.875a4 4 0 0 1 1.304-.215q1.106 0 2.046.545a4.14 4.14 0 0 1 1.501 1.485q.578.941.578 2.095 0 .48-.132 1.04.66.61 1.023 1.419.363.792.363 1.666 0 .892-.38 1.717a4.3 4.3 0 0 1-1.072 1.435 3.8 3.8 0 0 1-1.584.825 3.8 3.8 0 0 1-.775 1.683 4.06 4.06 0 0 1-1.436 1.188 4.04 4.04 0 0 1-1.832.429m-4.076-2.062q.825 0 1.435-.347l3.103-1.782a.36.36 0 0 0 .164-.313v-1.42L7.881 14.62a.67.67 0 0 1-.726 0l-3.118-1.798a.5.5 0 0 1-.017.115v.198q0 .841.396 1.551.413.693 1.139 1.089a3.2 3.2 0 0 0 1.617.412m.165-2.69a.4.4 0 0 0 .181.05q.083 0 .165-.05l1.238-.71-3.977-2.31a.7.7 0 0 1-.363-.643v-3.58q-.825.362-1.32 1.122a2.9 2.9 0 0 0-.495 1.65q0 .809.413 1.55.412.743 1.072 1.123zm3.91 3.663q.875 0 1.585-.396a2.96 2.96 0 0 0 1.534-2.64v-3.564a.32.32 0 0 0-.165-.297l-1.254-.726v4.604a.7.7 0 0 1-.363.643l-3.119 1.799a3 3 0 0 0 1.783.577m.627-6.039V8.878L10.01 7.822 8.129 8.878v2.244l1.881 1.056zM7.057 5.859a.7.7 0 0 1 .363-.644l3.119-1.798a3 3 0 0 0-1.782-.578q-.874 0-1.584.396A2.96 2.96 0 0 0 6.05 4.324a3.07 3.07 0 0 0-.396 1.551v3.547q0 .199.165.314l1.237.726zm8.383 7.887q.825-.364 1.303-1.123.495-.758.495-1.65a3.15 3.15 0 0 0-.412-1.55q-.413-.743-1.073-1.123l-3.086-1.782q-.099-.065-.181-.049a.3.3 0 0 0-.165.05l-1.238.692 3.993 2.327a.6.6 0 0 1 .264.264.64.64 0 0 1 .1.363zm-3.317-8.382a.63.63 0 0 1 .726 0l3.135 1.831v-.297q0-.792-.396-1.501a2.86 2.86 0 0 0-1.105-1.155q-.71-.43-1.65-.43-.825 0-1.436.347L8.294 5.941a.36.36 0 0 0-.165.314v1.418z"
       />
     </svg>
@@ -796,7 +798,7 @@ function CodexGlyph({ size }: { size: number }) {
 }
 
 // Four-point Gemini sparkle, from the app's AntigravitySparkle shape.
-function AntigravitySpark({ size }: { size: number }) {
+function AntigravitySpark({ size, color }: { size: number; color?: string }) {
   return (
     <svg
       width={size}
@@ -806,7 +808,7 @@ function AntigravitySpark({ size }: { size: number }) {
       style={{ display: 'block' }}
     >
       <path
-        fill="#5c8ff5"
+        fill={color ?? '#5c8ff5'}
         d="M50 0 Q66 34 100 50 Q66 66 50 100 Q34 66 0 50 Q34 34 50 0 Z"
       />
     </svg>

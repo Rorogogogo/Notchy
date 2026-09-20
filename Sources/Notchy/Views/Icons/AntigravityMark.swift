@@ -26,9 +26,11 @@ struct AntigravitySparkle: Shape {
 
 struct AntigravityMark: View {
     var size: CGFloat = 14
+    var color: Color = Color(red: 0.36, green: 0.56, blue: 0.96) // Gemini blue
+
     var body: some View {
         AntigravitySparkle()
-            .fill(Color(red: 0.36, green: 0.56, blue: 0.96)) // Gemini blue
+            .fill(color)
             .frame(width: size, height: size)
             .accessibilityLabel("Antigravity")
     }
