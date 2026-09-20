@@ -191,16 +191,56 @@ def append_block(script_path):
     except OSError:
         return False
 
+# Our own minimal statusline is not a user statusline. Without this check a
+# single install that displaced a real one would be self-perpetuating: every
+# later install would see its own script, append to it, and keep the user's
+# statusline stranded.
+def is_notchy_script(script):
+    try:
+        return os.path.realpath(script) == os.path.realpath(notchy_statline)
+    except OSError:
+        return False
+
+# Remember whatever we displace, so a later install can put it back.
+displaced_path = os.path.join(os.path.dirname(notchy_statline), "displaced-statusline.json")
+
+def remember_displaced(sl):
+    try:
+        with open(displaced_path, "w") as f:
+            json.dump(sl, f, indent=2)
+    except OSError:
+        pass
+
+def recall_displaced():
+    try:
+        with open(displaced_path) as f:
+            sl = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(sl, dict) or not sl.get("command"):
+        return None
+    return sl
+
 statusline = data.get("statusLine") or {}
 existing_cmd = statusline.get("command") if isinstance(statusline, dict) else None
 existing_script = script_path_from_cmd(existing_cmd)
 
-if existing_script:
-    # User has a statusline script — append our block (idempotent).
+if existing_script and not is_notchy_script(existing_script):
+    # User has a statusline script — append our block (idempotent) and
+    # record it, so we can never strand it later.
     append_block(existing_script)
+    remember_displaced(statusline)
 else:
-    # No usable statusline — point Claude Code at our minimal one.
-    data["statusLine"] = {"type": "command", "command": f"bash {notchy_statline}"}
+    # Either no usable statusline, or we are looking at our own minimal
+    # script. If an earlier install displaced a real one, restore it.
+    prior = recall_displaced()
+    prior_script = script_path_from_cmd(prior.get("command")) if prior else None
+    if prior_script and not is_notchy_script(prior_script):
+        data["statusLine"] = prior
+        append_block(prior_script)
+    else:
+        # Nothing to restore — point Claude Code at our minimal one.
+        data["statusLine"] = {"type": "command", "command": f"bash {notchy_statline}"}
 
 # --- Save ---
 with open(path, "w") as f:
