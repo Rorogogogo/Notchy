@@ -150,6 +150,30 @@ final class AgentUsageModel: ObservableObject {
         }
     }
 
+    // A countdown reads faster than a timestamp at a glance: the question being
+    // asked of a quota window is how long is left, not when the clock says it
+    // turns over. Kept coarse on purpose — seconds would churn and "2d 4h" is
+    // as much precision as a weekly window deserves.
+    static func resetCountdownLabel(for unix: Int, now: Date = Date()) -> String {
+        guard unix > 0 else { return "—" }
+        let remaining = TimeInterval(unix) - now.timeIntervalSince1970
+        guard remaining > 0 else { return "now" }
+
+        let minutes = Int(remaining / 60)
+        if minutes < 1 { return "<1m" }
+        if minutes < 60 { return "\(minutes)m" }
+
+        let hours = minutes / 60
+        if hours < 24 {
+            let leftover = minutes % 60
+            return leftover == 0 ? "\(hours)h" : "\(hours)h \(leftover)m"
+        }
+
+        let days = hours / 24
+        let leftover = hours % 24
+        return leftover == 0 ? "\(days)d" : "\(days)d \(leftover)h"
+    }
+
     static func resetDateLabel(
         for unix: Int,
         timeZone: TimeZone = .current,

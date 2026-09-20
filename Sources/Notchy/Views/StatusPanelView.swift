@@ -10,6 +10,10 @@ struct StatusPanelView: View {
     @ObservedObject var codexUsage: AgentUsageModel
     @ObservedObject var antigravityStatus: AgentStatusModel
     @StateObject private var repoStats = GitHubRepoStatsModel()
+    // Countdowns would otherwise freeze at whatever they read when the view was
+    // last built. A minute is the finest granularity any label here shows.
+    @State private var now = Date()
+    private let tick = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     private var snapshots: [AgentSnapshot] {
         agentSnapshots(
@@ -34,6 +38,7 @@ struct StatusPanelView: View {
         }
         .padding(14)
         .frame(width: 300)
+        .onReceive(tick) { now = $0 }
         // Opaque black, like the old notch pill — not the translucent system
         // popover material, which lets the desktop bleed through the readings.
         .background(Color.black)
@@ -79,7 +84,7 @@ struct StatusPanelView: View {
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(Int(max(0, 100 - pct).rounded()))% left · resets \(AgentUsageModel.resetDateLabel(for: reset))")
+                Text("\(Int(max(0, 100 - pct).rounded()))% left · resets in \(AgentUsageModel.resetCountdownLabel(for: reset, now: now))")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
@@ -94,7 +99,7 @@ struct StatusPanelView: View {
                 .font(.system(size: 9, weight: .semibold))
             Text(count == 1 ? "1 manual reset" : "\(count) manual resets")
             if expiry > 0 {
-                Text("· next expires \(AgentUsageModel.resetDateLabel(for: expiry))")
+                Text("· next expires in \(AgentUsageModel.resetCountdownLabel(for: expiry, now: now))")
             }
         }
         .font(.system(size: 9.5, weight: .medium, design: .rounded))
