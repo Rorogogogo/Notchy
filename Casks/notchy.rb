@@ -13,8 +13,8 @@ cask "notchy" do
   end
 
   depends_on arch: :arm64
-  depends_on macos: :sonoma
   depends_on formula: "jq"
+  depends_on macos: :sonoma
 
   pkg "Notchy.pkg"
 
