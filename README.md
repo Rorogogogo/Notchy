@@ -113,6 +113,18 @@ Antigravity (Gemini CLI / `agy`) is **status-only**: it doesn't expose a 5h/week
 
 <br />
 
+## 🍺 Install with Homebrew
+
+```bash
+brew tap rorogogogo/notchy https://github.com/Rorogogogo/Notchy
+brew trust rorogogogo/notchy
+brew install --cask notchy
+```
+
+Homebrew runs the same `.pkg` installer described below, so it asks for your password once and skips the "Open Anyway" step. `brew trust` is only needed on Homebrew 7+, which refuses third-party taps until you trust them. Upgrade with `brew upgrade --cask notchy`, remove with `brew uninstall --cask notchy`, or `brew uninstall --zap --cask notchy` to also delete the scripts under `~/.claude`, `~/.codex` and `~/.gemini`. Either way, the hook entries in your agent settings stay put; see [Uninstall](#-uninstall).
+
+<br />
+
 ## 🚀 Install (from the .pkg)
 
 1. Download `Notchy.pkg` from the [Releases](https://github.com/Rorogogogo/Notchy/releases) page.
